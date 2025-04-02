@@ -5,7 +5,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def serve_index():
-    return send_from_directory('.', 'index.html')
+    return send_from_directory('.', 'html5-game.html')
 
 @app.route('/<path:path>')
 def serve_files(path):
