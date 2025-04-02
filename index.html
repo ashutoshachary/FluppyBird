@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Flappy Bird Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        canvas {
+            border: 1px solid #333;
+            max-width: 100%;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .instructions {
+            margin-top: 20px;
+            text-align: center;
+            max-width: 400px;
+        }
+        
+        /* Add responsive styling */
+        @media (max-width: 768px) {
+            canvas {
+                width: 90vw;
+                height: auto;
+            }
+            
+            .instructions {
+                width: 90vw;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div id="pygame-canvas"></div>
+        <div class="instructions">
+            <h2>Flappy Bird</h2>
+            <p>Press SPACE or tap screen to flap and avoid obstacles!</p>
+            <p id="loading">Loading game...</p>
+        </div>
+    </div>
+    
+    <script>
+        // Alternative implementation using HTML5 Canvas if PyGame-web doesn't work
+        document.addEventListener('DOMContentLoaded', function() {
+            // First try to load the PyGame version
+            loadPygameVersion();
+            
+            // Set a timeout - if PyGame version doesn't load in 5 seconds, show error
+            setTimeout(function() {
+                const loadingElement = document.getElementById('loading');
+                if (loadingElement && loadingElement.textContent === 'Loading game...') {
+                    loadingElement.innerHTML = 'Game loading failed. Please try a different browser or device.';
+                }
+            }, 10000);
+        });
+        
+        async function loadPygameVersion() {
+            try {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/pyodide@0.24.1/pyodide.js';
+                script.onload = initPyodide;
+                document.head.appendChild(script);
+            } catch (error) {
+                console.error('Error loading PyGame version:', error);
+                document.getElementById('loading').textContent = 'Error loading game. Please try again.';
+            }
+        }
+        
+        async function initPyodide() {
+            try {
+                let pyodide = await loadPyodide();
+                document.getElementById('loading').textContent = 'Installing packages...';
+                
+                // Install pygame
+                await pyodide.loadPackagesFromImports('import pygame');
+                document.getElementById('loading').textContent = 'Starting game...';
+                
+                // Load and run the game
+                await pyodide.runPythonAsync(`
+                    import pygame
+                    import asyncio
+                    from pyodide.http import pyfetch
+                    
+                    async def load_and_run():
+                        try:
+                            # Load the main script
+                            main_response = await pyfetch("./main.py")
+                            main_code = await main_response.string()
+                            exec(main_code)
+                            
+                            # Load and run the starter
+                            web_response = await pyfetch("./web-start.py")
+                            web_code = await web_response.string()
+                            exec(web_code)
+                            
+                            # If we get here, game is running
+                            js.document.getElementById('loading').textContent = ''
+                        except Exception as e:
+                            js.console.error(f"Error: {str(e)}")
+                            js.document.getElementById('loading').textContent = f"Error: {str(e)}"
+                    
+                    asyncio.ensure_future(load_and_run())
+                `);
+            } catch (error) {
+                console.error('Error initializing Pyodide:', error);
+                document.getElementById('loading').textContent = 'Error initializing game engine. Please try a different browser.';
+            }
+        }
+    </script>
+</body>
+</html>
